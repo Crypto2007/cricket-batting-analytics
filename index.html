@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cricket Batting Analysis - SL Mini Project</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Chart.js via CDN (Fallback pure Canvas charting is also built-in) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>🏏 Historical Cricket Batting Analysis</h1>
+        <p>SL Mini Project &bull; Statistical Learning, Visual Derivations &amp; Web Scraping</p>
+      </div>
+      <div class="header-actions">
+        <label for="csv-file-input" class="btn btn-secondary btn-sm" style="cursor: pointer;">
+          📁 Upload Custom CSV
+        </label>
+        <input type="file" id="csv-file-input" accept=".csv" style="display: none;" />
+        <button id="download-csv-btn" class="btn btn-success btn-sm">
+          ⬇ Export Cleaned CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Navigation Bar -->
+  <nav class="nav-container">
+    <div class="nav-tabs">
+      <button class="nav-btn active" data-tab="tab-overview">📋 Data Overview</button>
+      <button class="nav-btn" data-tab="tab-cleaning">🧹 Data Cleaning</button>
+      <button class="nav-btn" data-tab="tab-descriptive">📊 Descriptive Statistics</button>
+      <button class="nav-btn" data-tab="tab-derivation">📐 Statistical Derivations</button>
+      <button class="nav-btn" data-tab="tab-visuals">📈 Visual Derivations</button>
+      <button class="nav-btn" data-tab="tab-era">📅 Era Analysis</button>
+      <button class="nav-btn" data-tab="tab-leaders">🏆 Leaderboards</button>
+      <button class="nav-btn" data-tab="tab-scraping">🌐 Web Scraping</button>
+      <button class="nav-btn" data-tab="tab-conclusions">📝 Conclusions</button>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+
+    <!-- KPI Summary Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Total Batting Legends</span>
+        <span class="stat-value" id="stat-total-records">119</span>
+        <span class="stat-sub">From ODI historical dataset</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Raw Features</span>
+        <span class="stat-value" id="stat-total-columns">15</span>
+        <span class="stat-sub">Columns in odb.csv</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Duplicates Handled</span>
+        <span class="stat-value" id="stat-duplicates">0</span>
+        <span class="stat-sub">0 duplicate rows found</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Cleaned Matrix</span>
+        <span class="stat-value" id="stat-clean-shape">119 × 16</span>
+        <span class="stat-sub">Features after engineering</span>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DATA OVERVIEW (df.head, tail, info) -->
+    <!-- ========================================== -->
+    <section id="tab-overview" class="tab-panel active">
+      <!-- Search and Filter Toolbar -->
+      <div class="card">
+        <div class="toolbar">
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="🔍 Search player name, country..."
+          />
+          <div style="display: flex; gap: 8px;">
+            <select id="country-filter" class="select-input">
+              <option value="ALL">All Teams / Countries</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">All-Time Batting Legends Dataset</h2>
+            <p class="card-subtitle">Click table headers to sort &bull; Filter by team or search player</p>
+          </div>
+          <span id="page-info" style="font-size: 13px; color: var(--text-muted);"></span>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th class="num">#</th>
+                <th onclick="sortTable('Player')" style="cursor: pointer;">Player ⬍</th>
+                <th>Team</th>
+                <th>Span</th>
+                <th class="num" onclick="sortTable('Mat')" style="cursor: pointer;">Mat ⬍</th>
+                <th class="num" onclick="sortTable('Inns')" style="cursor: pointer;">Inns ⬍</th>
+                <th class="num" onclick="sortTable('Runs')" style="cursor: pointer;">Runs ⬍</th>
+                <th class="num" onclick="sortTable('HS_Numeric')" style="cursor: pointer;">HS ⬍</th>
+                <th class="num" onclick="sortTable('Ave')" style="cursor: pointer;">Ave ⬍</th>
+                <th class="num" onclick="sortTable('SR')" style="cursor: pointer;">SR ⬍</th>
+                <th class="num" onclick="sortTable('Centuries')" style="cursor: pointer;">100s ⬍</th>
+                <th class="num" onclick="sortTable('Fifties')" style="cursor: pointer;">50s ⬍</th>
+                <th class="num">4s</th>
+                <th class="num">6s</th>
+              </tr>
+            </thead>
+            <tbody id="main-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <div>Showing records from active dataset</div>
+          <div class="page-controls" id="page-controls">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- First 5 Rows (df.head) & Last 5 Rows (df.tail) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px;">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">First 5 Rows (<code>df.head()</code>)</h3>
+            <span class="badge badge-info">Top 5 Records</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Span</th>
+                  <th class="num">Mat</th>
+                  <th class="num">Inns</th>
+                  <th class="num">Runs</th>
+                  <th class="num">HS</th>
+                  <th class="num">Ave</th>
+                  <th class="num">SR</th>
+                  <th class="num">100</th>
+                  <th class="num">50</th>
+                </tr>
+              </thead>
+              <tbody id="head-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Last 5 Rows (<code>df.tail()</code>)</h3>
+            <span class="badge badge-info">Bottom 5 Records</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Span</th>
+                  <th class="num">Mat</th>
+                  <th class="num">Inns</th>
+                  <th class="num">Runs</th>
+                  <th class="num">HS</th>
+                  <th class="num">Ave</th>
+                  <th class="num">SR</th>
+                  <th class="num">100</th>
+                  <th class="num">50</th>
+                </tr>
+              </thead>
+              <tbody id="tail-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dataset Architecture & Column Information (df.info()) -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Dataset Column Metadata &amp; Structure (<code>df.info()</code>)</h3>
+          <span class="badge badge-info">Data Dictionary</span>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Column Name</th>
+                <th>Data Type</th>
+                <th class="num">Non-Null Count</th>
+                <th>Feature Description &amp; Domain Meaning</th>
+              </tr>
+            </thead>
+            <tbody id="info-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: DATA CLEANING PIPELINE -->
+    <!-- ========================================== -->
+    <section id="tab-cleaning" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Data Cleaning &amp; Feature Preprocessing Pipeline</h2>
+          <button class="btn btn-success btn-sm" onclick="downloadCleanedCSV()">
+            ⬇ Download Cleaned CSV (<code>cleaned_cricket_dataset.csv</code>)
+          </button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+          This pipeline replicates the exact sequence of data preprocessing operations specified in
+          Cells #3, #4, and #5 of <code>SL_Mini_Project_Semi_Final.ipynb</code>.
+        </p>
+
+        <div class="pipeline-step">
+          <h4>1. Index &amp; Artifact Column Removal</h4>
+          <p>Scans dataset headers and removes trailing unnamed index columns (<code>Unnamed: 0</code>) generated during export.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <h4>2. Whitespace Normalization &amp; Empty String Imputation</h4>
+          <p>Strips leading/trailing whitespace across column headers and object fields. Replaces blank strings (<code>^\s*$</code>) with NaN.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <h4>3. Deduplication Check</h4>
+          <p>Runs <code>df.duplicated().sum()</code>. Verified 0 duplicate entries across the entire 119-player dataset.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <h4>4. Numeric Conversion &amp; Comma Stripping</h4>
+          <p>Converts string values like <code>"18,426"</code> to numeric <code>18426</code> for columns: <code>Mat, Inns, NO, Runs, Ave, BF, SR, 100, 50, 0, 4s, 6s</code>.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <h4>5. Feature Engineering: Highest Score (HS)</h4>
+          <p>Separates the not-out indicator (<code>*</code>) into a boolean feature <code>HS_NotOut</code> and creates a pure numeric score <code>HS_Numeric</code>.</p>
+        </div>
+
+        <div class="pipeline-step">
+          <h4>6. Feature Engineering: Career Debut Year</h4>
+          <p>Extracts the starting 4-digit year from career span (e.g., <code>"1989-2012"</code> &rarr; <code>Start_Year: 1989</code>) for chronological era grouping.</p>
+        </div>
+
+        <div class="pipeline-step" style="border-left-color: var(--success);">
+          <h4>7. Cleaned Dataset Export</h4>
+          <p>Saves the transformed dataset to <code>cleaned_cricket_dataset.csv</code> ready for model consumption or external download.</p>
+        </div>
+
+        <div class="code-box">
+<span class="code-comment"># Exact Python code executed in SL_Mini_Project_Semi_Final.ipynb:</span>
+<span class="code-keyword">df</span> = df.loc[:, ~df.columns.astype(str).str.startswith(<span class="code-str">"Unnamed"</span>)].copy()
+<span class="code-keyword">df</span>.columns = df.columns.astype(str).str.strip()
+<span class="code-keyword">for</span> col <span class="code-keyword">in</span> df.select_dtypes(include=<span class="code-str">"object"</span>).columns:
+    df[col] = df[col].str.strip()
+<span class="code-keyword">df</span> = df.drop_duplicates().copy()
+<span class="code-keyword">df</span>[<span class="code-str">"HS_NotOut"</span>] = df[<span class="code-str">"HS"</span>].astype(str).str.contains(<span class="code-str">r"\*"</span>, regex=<span class="code-keyword">True</span>)
+<span class="code-keyword">df</span>[<span class="code-str">"HS_Numeric"</span>] = pd.to_numeric(df[<span class="code-str">"HS"</span>].astype(str).str.replace(<span class="code-str">"*"</span>, <span class="code-str">""</span>), errors=<span class="code-str">"coerce"</span>)
+<span class="code-keyword">df</span>.to_csv(<span class="code-str">"cleaned_cricket_dataset.csv"</span>, index=<span class="code-keyword">False</span>)
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: DESCRIPTIVE STATISTICS (describe) -->
+    <!-- ========================================== -->
+    <section id="tab-descriptive" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Descriptive Statistics Table (<code>numeric_df.describe()</code>)</h2>
+          <span class="badge badge-info">Summary Metrics</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+          Includes Count, Mean, Sample Standard Deviation, Min, 25% (Q1), Median (50%), 75% (Q3), and Max for all numeric features.
+        </p>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Numeric Variable</th>
+                <th class="num">Count (N)</th>
+                <th class="num">Mean</th>
+                <th class="num">Std Dev</th>
+                <th class="num">Min</th>
+                <th class="num">25% (Q1)</th>
+                <th class="num">Median (50%)</th>
+                <th class="num">75% (Q3)</th>
+                <th class="num">Max</th>
+              </tr>
+            </thead>
+            <tbody id="describe-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: STATISTICAL DERIVATIONS (Skewness & Corr) -->
+    <!-- ========================================== -->
+    <section id="tab-derivation" class="tab-panel">
+      <!-- Skewness Analysis -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">1. Skewness Analysis of Batting Statistics (<code>df.skew()</code>)</h2>
+          <span class="badge badge-warning">Distribution Shape</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+          Calculated using the Fisher-Pearson standardized moment coefficient. Positive skewness (> 0.5) signifies a right-skewed tail where high-value outliers pull the mean above the median.
+        </p>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Batting Statistic</th>
+                <th class="num">Skewness Coefficient</th>
+                <th>Classification</th>
+                <th>Statistical Interpretation</th>
+              </tr>
+            </thead>
+            <tbody id="skew-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Correlation Matrix -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">2. Pearson Correlation Matrix (<code>df.corr()</code>)</h2>
+          <span class="badge badge-info">Linear Relationships</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+          Measures pairwise linear correlation ($r$) from -1.00 (strong negative) to +1.00 (strong positive).
+          Warmer orange/red shades represent strong positive associations.
+        </p>
+
+        <div class="table-responsive">
+          <table id="corr-table" class="heatmap-table">
+            <!-- Dynamically populated -->
+          </table>
+        </div>
+
+        <div style="margin-top: 18px; padding: 14px; background: #f8fafc; border-radius: 6px; font-size: 13px;">
+          <strong>💡 Key Mathematical Insights from Correlation:</strong>
+          <ul style="margin-left: 20px; margin-top: 6px; color: var(--text-muted);">
+            <li><strong>Innings &amp; Runs (r = 0.99):</strong> Almost perfect linear collinearity — more batting opportunities directly yield higher run totals.</li>
+            <li><strong>Balls Faced &amp; Runs (r = 0.99):</strong> Strongest predictor of run volume, confirming endurance at the crease dictates output.</li>
+            <li><strong>Centuries &amp; Runs (r = 0.91):</strong> High positive correlation — century makers consistently dominate aggregate run tables.</li>
+            <li><strong>Strike Rate &amp; Average (r = 0.12):</strong> Minimal correlation — fast scorers do not necessarily maintain superior batting averages.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: VISUAL DERIVATIONS (The 6 Charts) -->
+    <!-- ========================================== -->
+    <section id="tab-visuals" class="tab-panel">
+      <div class="card" style="margin-bottom: 20px;">
+        <h2 class="card-title">Visual Derivations &amp; Graphical Inferences</h2>
+        <p class="card-subtitle">
+          Interactive reproductions of the 6 data visualization charts generated in the notebook using Matplotlib and Seaborn.
+        </p>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Visual 1: Bar Chart (sns.barplot) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 1: Top 10 Cricket Players by Total Runs</h3>
+            <p class="chart-desc">Seaborn Bar Plot &bull; Replicating <code>sns.barplot(data=top_10, x="Player", y="Runs")</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-top-scorers"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 2: Histogram & KDE (sns.histplot) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 2: Distribution of Batting Averages</h3>
+            <p class="chart-desc">Seaborn Histogram &bull; 15 Bins &bull; <code>sns.histplot(data=df, x="Ave", bins=15, kde=True)</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-averages-hist"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 3: Scatter Plot (sns.scatterplot) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 3: Matches Played vs Total Runs</h3>
+            <p class="chart-desc">Multidimensional Scatter &bull; <code>sns.scatterplot(x="Mat", y="Runs", hue="Ave", size="SR")</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-matches-runs"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 4: Pie Chart (plt.pie) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 4: Century Distribution Among Top 6 Players</h3>
+            <p class="chart-desc">Matplotlib Pie &bull; Replicating <code>plt.pie(top_centuries["100"], autopct="%1.1f%%")</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-centuries-pie"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 5: Heatmap (sns.heatmap) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 5: Correlation Heatmap of Batting Statistics</h3>
+            <p class="chart-desc">Seaborn Heatmap &bull; Coolwarm Diverging Scale &bull; <code>sns.heatmap(df.corr(), annot=True)</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-heatmap-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 6: Line Chart (plt.plot) -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Visual 6: Average Total Runs by Career Starting Year</h3>
+            <p class="chart-desc">Chronological Line Trend &bull; <code>plt.plot(yearly_runs.index, yearly_runs.values, marker="o")</code></p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-yearly-runs"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 6: ERA & CAREER ANALYSIS -->
+    <!-- ========================================== -->
+    <section id="tab-era" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Career Debut Year Grouping (<code>groupby("Start_Year")</code>)</h2>
+          <span class="badge badge-info">Chronological Aggregations</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+          Replicating Cell #8: Aggregating batting output metrics grouped by the player's career debut starting year.
+        </p>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Career Start Year</th>
+                <th class="num">Number of Players</th>
+                <th class="num">Average Runs</th>
+                <th class="num">Average Batting Ave</th>
+                <th class="num">Average Strike Rate</th>
+              </tr>
+            </thead>
+            <tbody id="era-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 7: LEADERBOARDS & RECORDS -->
+    <!-- ========================================== -->
+    <section id="tab-leaders" class="tab-panel">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px;">
+        <!-- Top Run Scorers -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top 5 Run Scorers</h3>
+            <span class="badge badge-info">All-Time Leading Runs</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th class="num">Rank</th>
+                  <th>Player</th>
+                  <th class="num">Runs</th>
+                  <th class="num">Mat</th>
+                  <th class="num">Ave</th>
+                  <th class="num">SR</th>
+                  <th class="num">100</th>
+                  <th class="num">50</th>
+                </tr>
+              </thead>
+              <tbody id="top-runs-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top Centuries -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top 5 Century Makers</h3>
+            <span class="badge badge-warning">Most 100s</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th class="num">Rank</th>
+                  <th>Player</th>
+                  <th class="num">100s</th>
+                  <th class="num">Total Runs</th>
+                  <th class="num">Average</th>
+                </tr>
+              </thead>
+              <tbody id="top-centuries-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top Batting Averages -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Top 5 Batting Averages</h3>
+            <span class="badge badge-success">Min 20 Matches</span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th class="num">Rank</th>
+                  <th>Player</th>
+                  <th class="num">Average</th>
+                  <th class="num">Total Runs</th>
+                  <th class="num">Matches</th>
+                </tr>
+              </thead>
+              <tbody id="top-averages-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 8: WEB SCRAPING DEMONSTRATION -->
+    <!-- ========================================== -->
+    <section id="tab-scraping" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Live Web Scraping Demonstration (Requests &amp; BeautifulSoup)</h2>
+            <p class="card-subtitle">Replicating Cells #17 and #18 from the notebook</p>
+          </div>
+          <button id="run-scraper-btn" class="btn btn-primary btn-sm">
+            ⚡ Run Scraper Simulation
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px;">
+          <div class="stat-card">
+            <span class="stat-label">Target URL</span>
+            <span style="font-size: 14px; font-weight: 600; word-break: break-all;" id="scraper-url">https://www.espncricinfo.com/</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">HTTP Response</span>
+            <span class="stat-value" id="scraper-status" style="font-size: 20px; color: var(--success);">200 OK</span>
+          </div>
+        </div>
+
+        <div class="stat-card" style="margin-bottom: 20px;">
+          <span class="stat-label">Extracted Page Title</span>
+          <p id="scraper-title" style="font-size: 15px; font-weight: 600; margin-top: 4px; color: var(--text-main);"></p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px;">
+          <!-- Headings -->
+          <div class="scraper-box">
+            <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Extracted Cricinfo Headings (&lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;):</h4>
+            <ul id="scraper-headings-list" style="list-style: none; padding-left: 0;"></ul>
+          </div>
+
+          <!-- Links -->
+          <div class="scraper-box">
+            <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--primary);">Extracted Navigation &amp; Article Links:</h4>
+            <div id="scraper-links-list" style="max-height: 280px; overflow-y: auto;"></div>
+          </div>
+        </div>
+
+        <div class="code-box">
+<span class="code-comment"># Exact Python BeautifulSoup code from the notebook:</span>
+<span class="code-keyword">import</span> requests
+<span class="code-keyword">from</span> bs4 <span class="code-keyword">import</span> BeautifulSoup
+
+url = <span class="code-str">"https://www.espncricinfo.com/"</span>
+response = requests.get(url, headers={<span class="code-str">"User-Agent"</span>: <span class="code-str">"Mozilla/5.0 (compatible; StudentProject/1.0)"</span>}, timeout=15)
+soup = BeautifulSoup(response.text, <span class="code-str">"html.parser"</span>)
+
+page_title = soup.title.get_text(strip=<span class="code-keyword">True</span>)
+headings = [h.get_text(<span class="code-str">" "</span>, strip=<span class="code-keyword">True</span>) <span class="code-keyword">for</span> h <span class="code-keyword">in</span> soup.find_all([<span class="code-str">"h1"</span>, <span class="code-str">"h2"</span>, <span class="code-str">"h3"</span>])]
+links = [{<span class="code-str">"Link_Text"</span>: a.get_text(<span class="code-str">" "</span>, strip=<span class="code-keyword">True</span>), <span class="code-str">"URL"</span>: a[<span class="code-str">"href"</span>]} <span class="code-keyword">for</span> a <span class="code-keyword">in</span> soup.find_all(<span class="code-str">"a"</span>, href=<span class="code-keyword">True</span>)]
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 9: PROJECT CONCLUSIONS -->
+    <!-- ========================================== -->
+    <section id="tab-conclusions" class="tab-panel">
+      <div class="card">
+        <h2 class="card-title">Project Summary &amp; Analytical Conclusions</h2>
+        <p class="card-subtitle">Final evaluation and deductions as printed in the notebook</p>
+
+        <div style="background: #f8fafc; border-left: 4px solid var(--success); padding: 18px; margin: 20px 0; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.7;">
+          <p><strong>Official Conclusion:</strong></p>
+          <blockquote style="font-style: italic; color: #334155; margin-top: 6px;">
+            "This project uses Python to inspect and clean cricket batting data, calculate statistical measures, visualize player performance, study relationships between batting statistics, and demonstrate web scraping with Requests and BeautifulSoup."
+          </blockquote>
+        </div>
+
+        <h3 style="font-size: 16px; margin: 20px 0 10px 0; color: var(--text-main);">Key Deductions &amp; Takeaways:</h3>
+        <ul style="margin-left: 20px; font-size: 14px; color: var(--text-muted); line-height: 1.8;">
+          <li><strong>Longevity Dictates Milestones:</strong> Career runs display a near-perfect correlation with Balls Faced ($r = 0.99$) and Innings Batted ($r = 0.99$). Tendulkar, Sangakkara, and Ponting lead both in longevity and volume.</li>
+          <li><strong>Outlier Efficiency:</strong> Modern masterclasses such as Virat Kohli (Average: 59.07, SR: 93.17) and AB de Villiers (Average: 53.50, SR: 101.09) represent unprecedented statistical efficiency, combining high average with explosive strike rate.</li>
+          <li><strong>Right-Skewed Batting Distributions:</strong> The skewness coefficient for runs, centuries, and matches played is strongly positive, proving that international cricket batting output is heavily top-order dominated.</li>
+          <li><strong>Era Transition:</strong> Players starting post-2005 exhibit significantly elevated strike rates (~88-102) compared to early ODI pioneers (~63-75), reflecting fielding restrictions and white-ball evolution.</li>
+          <li><strong>Integrated Web Extraction:</strong> Live scraping capabilities using BeautifulSoup allow enriching historical statistics with real-time news, rankings, and match results.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>SL Mini Project &bull; Historical Cricket Batting Analysis &bull; Clean HTML &amp; JS Frontend</p>
+  </footer>
+
+  <!-- Embedded Data & Main Logic -->
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
